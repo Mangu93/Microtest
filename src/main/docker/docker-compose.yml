@@ -1,0 +1,11 @@
+version: '2'
+services:
+  microtest-postgresql:
+    image: postgres:11.2
+    # volumes:
+    #     - ~/volumes/jhipster/microtest/postgresql/:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=microtest
+      - POSTGRES_PASSWORD=
+    ports:
+      - 5432:5432
