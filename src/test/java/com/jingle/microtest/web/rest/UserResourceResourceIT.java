@@ -1,19 +1,24 @@
 package com.jingle.microtest.web.rest;
 
 import com.jingle.microtest.MicrotestApp;
+import com.jingle.microtest.domain.User;
 import com.jingle.microtest.domain.UserResource;
+import com.jingle.microtest.repository.UserRepository;
 import com.jingle.microtest.repository.UserResourceRepository;
+import com.jingle.microtest.security.jwt.TokenProvider;
 import com.jingle.microtest.service.UserResourceService;
 import com.jingle.microtest.web.rest.errors.ExceptionTranslator;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockitoAnnotations;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.json.JacksonJsonParser;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,13 +26,13 @@ import org.springframework.validation.Validator;
 
 import javax.persistence.EntityManager;
 import java.time.Instant;
-import java.time.ZonedDateTime;
-import java.time.ZoneOffset;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.List;
 
-import static com.jingle.microtest.web.rest.TestUtil.sameInstant;
 import static com.jingle.microtest.web.rest.TestUtil.createFormattingConversionService;
+import static com.jingle.microtest.web.rest.TestUtil.sameInstant;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -52,6 +57,9 @@ public class UserResourceResourceIT {
     private UserResourceService userResourceService;
 
     @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
     private MappingJackson2HttpMessageConverter jacksonMessageConverter;
 
     @Autowired
@@ -64,39 +72,74 @@ public class UserResourceResourceIT {
     private EntityManager em;
 
     @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
     private Validator validator;
+
+    @Autowired
+    private TokenProvider tokenProvider;
+
+    @Autowired
+    private AuthenticationManagerBuilder authenticationManager;
 
     private MockMvc restUserResourceMockMvc;
 
+    private MockMvc mockMvc;
+
     private UserResource userResource;
+
+    private String accessToken;
+
+    private User user;
 
     @BeforeEach
     public void setup() {
         MockitoAnnotations.initMocks(this);
-        final UserResourceResource userResourceResource = new UserResourceResource(userResourceService);
+        final UserResourceResource userResourceResource = new UserResourceResource(userResourceService, userRepository);
         this.restUserResourceMockMvc = MockMvcBuilders.standaloneSetup(userResourceResource)
             .setCustomArgumentResolvers(pageableArgumentResolver)
             .setControllerAdvice(exceptionTranslator)
             .setConversionService(createFormattingConversionService())
             .setMessageConverters(jacksonMessageConverter)
             .setValidator(validator).build();
+        UserJWTController userJWTController = new UserJWTController(tokenProvider, authenticationManager);
+
+        this.mockMvc = MockMvcBuilders.standaloneSetup(userJWTController)
+            .setControllerAdvice(exceptionTranslator)
+            .build();
+
+    }
+
+    private void prepareUser() throws Exception {
+//        userRepository.saveAndFlush(this.user);
+
+        String response = mockMvc.perform(post("/api/authenticate")
+            .content("{ \"username\": \"admin\", \"password\": \"admin\" }")
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)).andReturn().getResponse().getContentAsString();
+        this.accessToken = new JacksonJsonParser().parseMap(response).get("id_token").toString();
     }
 
     /**
      * Create an entity for this test.
-     *
+     * <p>
      * This is a static method, as tests for other entities might also need it,
      * if they test an entity which requires the current entity.
      */
-    public static UserResource createEntity(EntityManager em) {
+    public UserResource createEntity(EntityManager em) {
         UserResource userResource = new UserResource()
             .value(DEFAULT_VALUE)
-            .createdAt(DEFAULT_CREATED_AT);
+            .createdAt(DEFAULT_CREATED_AT).userBelongsTo(this.user);
         return userResource;
     }
+
+    public User createUserEntity(EntityManager em) {
+        return this.userRepository.findOneByLogin("admin").get();
+    }
+
     /**
      * Create an updated entity for this test.
-     *
+     * <p>
      * This is a static method, as tests for other entities might also need it,
      * if they test an entity which requires the current entity.
      */
@@ -109,6 +152,12 @@ public class UserResourceResourceIT {
 
     @BeforeEach
     public void initTest() {
+        user = createUserEntity(em);
+        try {
+            prepareUser();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         userResource = createEntity(em);
     }
 
@@ -118,7 +167,13 @@ public class UserResourceResourceIT {
         int databaseSizeBeforeCreate = userResourceRepository.findAll().size();
 
         // Create the UserResource
-        restUserResourceMockMvc.perform(post("/api/user-resources")
+        restUserResourceMockMvc.perform(post("/api/user-resources").header("Authorization", "Bearer " + accessToken)
+            .with(
+                request -> {
+                    request.setRemoteUser(this.user.getLogin());
+                    return request;
+                }
+            )
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
             .content(TestUtil.convertObjectToJsonBytes(userResource)))
             .andExpect(status().isCreated());
@@ -190,18 +245,22 @@ public class UserResourceResourceIT {
     @Test
     @Transactional
     public void getAllUserResources() throws Exception {
-        // Initialize the database
         userResourceRepository.saveAndFlush(userResource);
-
         // Get all the userResourceList
-        restUserResourceMockMvc.perform(get("/api/user-resources?sort=id,desc"))
+        restUserResourceMockMvc.perform(get("/api/user-resources").header("Authorization", "Bearer " + accessToken)
+            .with(
+                request -> {
+                    request.setRemoteUser(this.user.getLogin());
+                    return request;
+                }
+            ))
             .andExpect(status().isOk())
             .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
             .andExpect(jsonPath("$.[*].id").value(hasItem(userResource.getId().intValue())))
             .andExpect(jsonPath("$.[*].value").value(hasItem(DEFAULT_VALUE.toString())))
             .andExpect(jsonPath("$.[*].createdAt").value(hasItem(sameInstant(DEFAULT_CREATED_AT))));
     }
-    
+
     @Test
     @Transactional
     public void getUserResource() throws Exception {
@@ -209,7 +268,13 @@ public class UserResourceResourceIT {
         userResourceRepository.saveAndFlush(userResource);
 
         // Get the userResource
-        restUserResourceMockMvc.perform(get("/api/user-resources/{id}", userResource.getId()))
+        restUserResourceMockMvc.perform(get("/api/user-resources/{id}", userResource.getId()).header("Authorization", "Bearer " + accessToken)
+            .with(
+                request -> {
+                    request.setRemoteUser(this.user.getLogin());
+                    return request;
+                }
+            ))
             .andExpect(status().isOk())
             .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
             .andExpect(jsonPath("$.id").value(userResource.getId().intValue()))
@@ -221,8 +286,14 @@ public class UserResourceResourceIT {
     @Transactional
     public void getNonExistingUserResource() throws Exception {
         // Get the userResource
-        restUserResourceMockMvc.perform(get("/api/user-resources/{id}", Long.MAX_VALUE))
-            .andExpect(status().isNotFound());
+        restUserResourceMockMvc.perform(get("/api/user-resources/{id}", Long.MAX_VALUE).header("Authorization", "Bearer " + accessToken)
+            .with(
+                request -> {
+                    request.setRemoteUser(this.user.getLogin());
+                    return request;
+                }
+            ))
+            .andExpect(status().is4xxClientError());
     }
 
     @Test
@@ -239,9 +310,16 @@ public class UserResourceResourceIT {
         em.detach(updatedUserResource);
         updatedUserResource
             .value(UPDATED_VALUE)
-            .createdAt(UPDATED_CREATED_AT);
+            .createdAt(UPDATED_CREATED_AT)
+            .setUserBelongsTo(this.user);
 
-        restUserResourceMockMvc.perform(put("/api/user-resources")
+        restUserResourceMockMvc.perform(put("/api/user-resources").header("Authorization", "Bearer " + accessToken)
+            .with(
+                request -> {
+                    request.setRemoteUser(this.user.getLogin());
+                    return request;
+                }
+            )
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
             .content(TestUtil.convertObjectToJsonBytes(updatedUserResource)))
             .andExpect(status().isOk());
@@ -281,7 +359,13 @@ public class UserResourceResourceIT {
         int databaseSizeBeforeDelete = userResourceRepository.findAll().size();
 
         // Delete the userResource
-        restUserResourceMockMvc.perform(delete("/api/user-resources/{id}", userResource.getId())
+        restUserResourceMockMvc.perform(delete("/api/user-resources/{id}", userResource.getId()).header("Authorization", "Bearer " + accessToken)
+            .with(
+                request -> {
+                    request.setRemoteUser(this.user.getLogin());
+                    return request;
+                }
+            )
             .accept(TestUtil.APPLICATION_JSON_UTF8))
             .andExpect(status().isNoContent());
 

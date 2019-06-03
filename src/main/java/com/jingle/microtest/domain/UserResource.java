@@ -33,7 +33,7 @@ public class UserResource implements Serializable {
     @Column(name = "created_at", nullable = false)
     private ZonedDateTime createdAt;
 
-    @ManyToOne
+    @ManyToOne(cascade = CascadeType.MERGE)
     @JsonIgnoreProperties("userResources")
     private User userBelongsTo;
 

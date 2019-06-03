@@ -39,7 +39,7 @@ public class User extends AbstractAuditingEntity implements Serializable {
     @Column(length = 50, unique = true, nullable = false)
     private String login;
 
-    @JsonIgnore
+
     @NotNull
     @Size(min = 60, max = 60)
     @Column(name = "password_hash", length = 60, nullable = false)
@@ -93,7 +93,7 @@ public class User extends AbstractAuditingEntity implements Serializable {
     @BatchSize(size = 20)
     private Set<Authority> authorities = new HashSet<>();
 
-    @OneToMany(mappedBy = "userBelongsTo")
+    @OneToMany(cascade = CascadeType.ALL, mappedBy = "userBelongsTo")
     @Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
     private Set<UserResource> userResources = new HashSet<>();
 
