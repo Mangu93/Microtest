@@ -273,7 +273,7 @@ public class AccountResourceIT {
     @Test
     @Transactional
     public void testRegisterDuplicateLogin() throws Exception {
-        // First registration
+// First registration
         ManagedUserVM firstUser = new ManagedUserVM();
         firstUser.setLogin("alice");
         firstUser.setPassword("password");
@@ -311,19 +311,10 @@ public class AccountResourceIT {
             post("/api/register")
                 .contentType(TestUtil.APPLICATION_JSON_UTF8)
                 .content(TestUtil.convertObjectToJsonBytes(secondUser)))
-            .andExpect(status().isCreated());
+            .andExpect(status().is4xxClientError());
 
         Optional<User> testUser = userRepository.findOneByEmailIgnoreCase("alice2@example.com");
-        assertThat(testUser.isPresent()).isTrue();
-        testUser.get().setActivated(true);
-        userRepository.save(testUser.get());
-
-        // Second (already activated) user
-        restMvc.perform(
-            post("/api/register")
-                .contentType(TestUtil.APPLICATION_JSON_UTF8)
-                .content(TestUtil.convertObjectToJsonBytes(secondUser)))
-            .andExpect(status().is4xxClientError());
+        assertThat(testUser.isPresent()).isFalse();
     }
 
     @Test
@@ -366,13 +357,10 @@ public class AccountResourceIT {
             post("/api/register")
                 .contentType(TestUtil.APPLICATION_JSON_UTF8)
                 .content(TestUtil.convertObjectToJsonBytes(secondUser)))
-            .andExpect(status().isCreated());
-
-        Optional<User> testUser2 = userRepository.findOneByLogin("test-register-duplicate-email");
-        assertThat(testUser2.isPresent()).isFalse();
+            .andExpect(status().is4xxClientError());
 
         Optional<User> testUser3 = userRepository.findOneByLogin("test-register-duplicate-email-2");
-        assertThat(testUser3.isPresent()).isTrue();
+        assertThat(testUser3.isPresent()).isFalse();
 
         // Duplicate email - with uppercase email address
         ManagedUserVM userWithUpperCaseEmail = new ManagedUserVM();
@@ -391,21 +379,10 @@ public class AccountResourceIT {
             post("/api/register")
                 .contentType(TestUtil.APPLICATION_JSON_UTF8)
                 .content(TestUtil.convertObjectToJsonBytes(userWithUpperCaseEmail)))
-            .andExpect(status().isCreated());
+            .andExpect(status().is4xxClientError());
 
         Optional<User> testUser4 = userRepository.findOneByLogin("test-register-duplicate-email-3");
-        assertThat(testUser4.isPresent()).isTrue();
-        assertThat(testUser4.get().getEmail()).isEqualTo("test-register-duplicate-email@example.com");
-
-        testUser4.get().setActivated(true);
-        userService.updateUser((new UserDTO(testUser4.get())));
-
-        // Register 4th (already activated) user
-        restMvc.perform(
-            post("/api/register")
-                .contentType(TestUtil.APPLICATION_JSON_UTF8)
-                .content(TestUtil.convertObjectToJsonBytes(secondUser)))
-            .andExpect(status().is4xxClientError());
+        assertThat(testUser4.isPresent()).isFalse();
     }
 
     @Test
@@ -434,32 +411,6 @@ public class AccountResourceIT {
             .containsExactly(authorityRepository.findById(AuthoritiesConstants.USER).get());
     }
 
-    @Test
-    @Transactional
-    public void testActivateAccount() throws Exception {
-        final String activationKey = "some activation key";
-        User user = new User();
-        user.setLogin("activate-account");
-        user.setEmail("activate-account@example.com");
-        user.setPassword(RandomStringUtils.random(60));
-        user.setActivated(false);
-        user.setActivationKey(activationKey);
-
-        userRepository.saveAndFlush(user);
-
-        restMvc.perform(get("/api/activate?key={activationKey}", activationKey))
-            .andExpect(status().isOk());
-
-        user = userRepository.findOneByLogin(user.getLogin()).orElse(null);
-        assertThat(user.getActivated()).isTrue();
-    }
-
-    @Test
-    @Transactional
-    public void testActivateAccountWithWrongKey() throws Exception {
-        restMvc.perform(get("/api/activate?key=wrongActivationKey"))
-            .andExpect(status().isInternalServerError());
-    }
 
     @Test
     @Transactional
