@@ -7,23 +7,26 @@ import com.jingle.microtest.domain.User;
 import com.jingle.microtest.repository.AuthorityRepository;
 import com.jingle.microtest.repository.UserRepository;
 import com.jingle.microtest.security.AuthoritiesConstants;
+import com.jingle.microtest.security.jwt.TokenProvider;
 import com.jingle.microtest.service.MailService;
 import com.jingle.microtest.service.UserService;
 import com.jingle.microtest.service.dto.PasswordChangeDTO;
 import com.jingle.microtest.service.dto.UserDTO;
 import com.jingle.microtest.web.rest.errors.ExceptionTranslator;
 import com.jingle.microtest.web.rest.vm.KeyAndPasswordVM;
+import com.jingle.microtest.web.rest.vm.LoginVM;
 import com.jingle.microtest.web.rest.vm.ManagedUserVM;
 import org.apache.commons.lang3.RandomStringUtils;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.json.JacksonJsonParser;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
@@ -31,7 +34,10 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -59,6 +65,9 @@ public class AccountResourceIT {
     private PasswordEncoder passwordEncoder;
 
     @Autowired
+    private AuthenticationManagerBuilder authenticationManagerBuilder;
+
+    @Autowired
     private HttpMessageConverter<?>[] httpMessageConverters;
 
     @Autowired
@@ -72,6 +81,11 @@ public class AccountResourceIT {
 
     private MockMvc restMvc;
 
+    private MockMvc mockMvc;
+
+    @Autowired
+    private TokenProvider tokenProvider;
+
     private MockMvc restUserMockMvc;
 
     @BeforeEach
@@ -79,15 +93,20 @@ public class AccountResourceIT {
         MockitoAnnotations.initMocks(this);
         doNothing().when(mockMailService).sendActivationEmail(any());
         AccountResource accountResource =
-            new AccountResource(userRepository, userService, mockMailService);
+            new AccountResource(userRepository, userService, mockMailService, authenticationManagerBuilder);
 
         AccountResource accountUserMockResource =
-            new AccountResource(userRepository, mockUserService, mockMailService);
+            new AccountResource(userRepository, mockUserService, mockMailService, authenticationManagerBuilder);
         this.restMvc = MockMvcBuilders.standaloneSetup(accountResource)
             .setMessageConverters(httpMessageConverters)
             .setControllerAdvice(exceptionTranslator)
             .build();
         this.restUserMockMvc = MockMvcBuilders.standaloneSetup(accountUserMockResource)
+            .setControllerAdvice(exceptionTranslator)
+            .build();
+        UserJWTController userJWTController = new UserJWTController(tokenProvider, authenticationManagerBuilder);
+
+        this.mockMvc = MockMvcBuilders.standaloneSetup(userJWTController)
             .setControllerAdvice(exceptionTranslator)
             .build();
     }
@@ -567,7 +586,7 @@ public class AccountResourceIT {
 
         restMvc.perform(post("/api/account/change-password")
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
-            .content(TestUtil.convertObjectToJsonBytes(new PasswordChangeDTO("1"+currentPassword, "new password"))))
+            .content(TestUtil.convertObjectToJsonBytes(new PasswordChangeDTO("1" + currentPassword, "new password"))))
             .andExpect(status().isBadRequest());
 
         User updatedUser = userRepository.findOneByLogin("change-password-wrong-existing-password").orElse(null);
@@ -760,5 +779,47 @@ public class AccountResourceIT {
                 .contentType(TestUtil.APPLICATION_JSON_UTF8)
                 .content(TestUtil.convertObjectToJsonBytes(keyAndPassword)))
             .andExpect(status().isInternalServerError());
+    }
+
+    private String getAccessToken(String login, String password) throws Exception {
+        String response = mockMvc.perform(post("/api/authenticate")
+            .content(String.format("{ \"username\": \"%s\", \"password\": \"%s\" }", login, password))
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)).andReturn().getResponse().getContentAsString();
+        return new JacksonJsonParser().parseMap(response).get("id_token").toString();
+    }
+
+    @Test
+    @Transactional
+    public void testCreateAndDeleteUser() throws Exception {
+        ManagedUserVM validUser = new ManagedUserVM();
+        validUser.setLogin("test-register-valid");
+        validUser.setPassword("password");
+        validUser.setFirstName("Alice");
+        validUser.setLastName("Test");
+        validUser.setEmail("test-register-valid@example.com");
+        validUser.setImageUrl("http://placehold.it/50x50");
+        validUser.setLangKey(Constants.DEFAULT_LANGUAGE);
+        validUser.setAuthorities(Collections.singleton(AuthoritiesConstants.USER));
+        assertThat(userRepository.findOneByLogin("test-register-valid").isPresent()).isFalse();
+
+        restMvc.perform(
+            post("/api/register")
+                .contentType(TestUtil.APPLICATION_JSON_UTF8)
+                .content(TestUtil.convertObjectToJsonBytes(validUser)))
+            .andExpect(status().isCreated());
+
+        String token = getAccessToken(validUser.getLogin(), "password");
+        LoginVM loginVM = new LoginVM();
+        loginVM.setPassword("password");
+        loginVM.setUsername(validUser.getLogin());
+        restUserMockMvc.perform(delete("/api/account").contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .content(TestUtil.convertObjectToJsonBytes(loginVM)).header("Authorization", "Bearer " + token)
+            .with(
+                request -> {
+                    request.setRemoteUser(validUser.getLogin());
+                    return request;
+                }
+            ).accept(TestUtil.APPLICATION_JSON_UTF8))
+            .andExpect(status().isNoContent());
     }
 }

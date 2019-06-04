@@ -8,19 +8,29 @@ import com.jingle.microtest.service.MailService;
 import com.jingle.microtest.service.UserService;
 import com.jingle.microtest.service.dto.PasswordChangeDTO;
 import com.jingle.microtest.service.dto.UserDTO;
-import com.jingle.microtest.web.rest.errors.*;
+import com.jingle.microtest.web.rest.errors.EmailAlreadyUsedException;
+import com.jingle.microtest.web.rest.errors.EmailNotFoundException;
+import com.jingle.microtest.web.rest.errors.InvalidPasswordException;
+import com.jingle.microtest.web.rest.errors.LoginAlreadyUsedException;
 import com.jingle.microtest.web.rest.vm.KeyAndPasswordVM;
+import com.jingle.microtest.web.rest.vm.LoginVM;
 import com.jingle.microtest.web.rest.vm.ManagedUserVM;
-
+import io.github.jhipster.web.util.HeaderUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
-import java.util.*;
+import java.util.Optional;
 
 /**
  * REST controller for managing the current user's account.
@@ -35,6 +45,9 @@ public class AccountResource {
         }
     }
 
+    @Value("${jhipster.clientApp.name}")
+    private String applicationName;
+
     private final Logger log = LoggerFactory.getLogger(AccountResource.class);
 
     private final UserRepository userRepository;
@@ -43,18 +56,21 @@ public class AccountResource {
 
     private final MailService mailService;
 
-    public AccountResource(UserRepository userRepository, UserService userService, MailService mailService) {
+    private final AuthenticationManagerBuilder authenticationManagerBuilder;
+
+    public AccountResource(UserRepository userRepository, UserService userService, MailService mailService, AuthenticationManagerBuilder authenticationManagerBuilder) {
 
         this.userRepository = userRepository;
         this.userService = userService;
         this.mailService = mailService;
+        this.authenticationManagerBuilder = authenticationManagerBuilder;
     }
 
     /**
      * {@code POST  /register} : register the user.
      *
      * @param managedUserVM the managed user View Model.
-     * @throws InvalidPasswordException {@code 400 (Bad Request)} if the password is incorrect.
+     * @throws InvalidPasswordException  {@code 400 (Bad Request)} if the password is incorrect.
      * @throws EmailAlreadyUsedException {@code 400 (Bad Request)} if the email is already used.
      * @throws LoginAlreadyUsedException {@code 400 (Bad Request)} if the login is already used.
      */
@@ -93,12 +109,31 @@ public class AccountResource {
             .orElseThrow(() -> new AccountResourceException("User could not be found"));
     }
 
+    @DeleteMapping("/account")
+    public ResponseEntity<Void> deleteAccount(HttpServletRequest request, @Valid @RequestBody LoginVM loginVM) {
+        if (request.getRemoteUser().equalsIgnoreCase(loginVM.getUsername())) {
+            try {
+                UsernamePasswordAuthenticationToken authenticationToken =
+                    new UsernamePasswordAuthenticationToken(loginVM.getUsername(), loginVM.getPassword());
+
+                Authentication authentication = authenticationManagerBuilder.getObject().authenticate(authenticationToken);
+                if (authentication != null) {
+                    userService.deleteUser(loginVM.getUsername());
+                    return ResponseEntity.noContent().headers(HeaderUtil.createAlert(applicationName, "A user is deleted with identifier " + loginVM.getUsername(), loginVM.getUsername())).build();
+                }
+            } catch (AuthenticationException ex) {
+                throw new AccountResourceException("User and password do not match");
+            }
+        }
+        throw new AccountResourceException("Authentication needed to do this operation");
+    }
+
     /**
      * {@code POST  /account} : update the current user information.
      *
      * @param userDTO the current user information.
      * @throws EmailAlreadyUsedException {@code 400 (Bad Request)} if the email is already used.
-     * @throws RuntimeException {@code 500 (Internal Server Error)} if the user login wasn't found.
+     * @throws RuntimeException          {@code 500 (Internal Server Error)} if the user login wasn't found.
      */
     @PostMapping("/account")
     public void saveAccount(@Valid @RequestBody UserDTO userDTO) {
@@ -137,10 +172,10 @@ public class AccountResource {
      */
     @PostMapping(path = "/account/reset-password/init")
     public void requestPasswordReset(@RequestBody String mail) {
-       mailService.sendPasswordResetMail(
-           userService.requestPasswordReset(mail)
-               .orElseThrow(EmailNotFoundException::new)
-       );
+        mailService.sendPasswordResetMail(
+            userService.requestPasswordReset(mail)
+                .orElseThrow(EmailNotFoundException::new)
+        );
     }
 
     /**
@@ -148,7 +183,7 @@ public class AccountResource {
      *
      * @param keyAndPassword the generated key and the new password.
      * @throws InvalidPasswordException {@code 400 (Bad Request)} if the password is incorrect.
-     * @throws RuntimeException {@code 500 (Internal Server Error)} if the password could not be reset.
+     * @throws RuntimeException         {@code 500 (Internal Server Error)} if the password could not be reset.
      */
     @PostMapping(path = "/account/reset-password/finish")
     public void finishPasswordReset(@RequestBody KeyAndPasswordVM keyAndPassword) {
