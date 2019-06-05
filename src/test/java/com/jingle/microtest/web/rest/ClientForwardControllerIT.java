@@ -20,12 +20,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Integration tests for the {@link ClientForwardController} REST controller.
  */
 @SpringBootTest(classes = MicrotestApp.class)
-public class ClientForwardControllerIT {
+class ClientForwardControllerIT {
 
     private MockMvc restMockMvc;
 
     @BeforeEach
-    public void setup() {
+    void setup() {
         ClientForwardController clientForwardController = new ClientForwardController();
         this.restMockMvc = MockMvcBuilders
             .standaloneSetup(clientForwardController, new TestController())
@@ -33,7 +33,7 @@ public class ClientForwardControllerIT {
     }
 
     @Test
-    public void getBackendEndpoint() throws Exception {
+    void getBackendEndpoint() throws Exception {
         restMockMvc.perform(get("/test"))
             .andExpect(status().isOk())
             .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_PLAIN_VALUE))
@@ -41,7 +41,7 @@ public class ClientForwardControllerIT {
     }
 
     @Test
-    public void getClientEndpoint() throws Exception {
+    void getClientEndpoint() throws Exception {
         ResultActions perform = restMockMvc.perform(get("/non-existant-mapping"));
         perform
             .andExpect(status().isOk())
@@ -49,7 +49,7 @@ public class ClientForwardControllerIT {
     }
 
     @Test
-    public void getNestedClientEndpoint() throws Exception {
+    void getNestedClientEndpoint() throws Exception {
         restMockMvc.perform(get("/admin/user-management"))
             .andExpect(status().isOk())
             .andExpect(forwardedUrl("/"));

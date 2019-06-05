@@ -46,7 +46,7 @@ public class CustomAuditEventRepositoryIT {
     private PersistentAuditEvent testOldUserEvent;
 
     @BeforeEach
-    public void setup() {
+    void setup() {
         customAuditEventRepository = new CustomAuditEventRepository(persistenceAuditEventRepository, auditEventConverter);
         persistenceAuditEventRepository.deleteAll();
         Instant oneHourAgo = Instant.now().minusSeconds(3600);
@@ -71,7 +71,7 @@ public class CustomAuditEventRepositoryIT {
     }
 
     @Test
-    public void addAuditEvent() {
+    void addAuditEvent() {
         Map<String, Object> data = new HashMap<>();
         data.put("test-key", "test-value");
         AuditEvent event = new AuditEvent("test-user", "test-type", data);
@@ -88,7 +88,7 @@ public class CustomAuditEventRepositoryIT {
     }
 
     @Test
-    public void addAuditEventTruncateLargeData() {
+    void addAuditEventTruncateLargeData() {
         Map<String, Object> data = new HashMap<>();
         StringBuilder largeData = new StringBuilder();
         for (int i = 0; i < EVENT_DATA_COLUMN_MAX_LENGTH + 10; i++) {
@@ -111,7 +111,7 @@ public class CustomAuditEventRepositoryIT {
     }
 
     @Test
-    public void testAddEventWithWebAuthenticationDetails() {
+    void testAddEventWithWebAuthenticationDetails() {
         HttpSession session = new MockHttpSession(null, "test-session-id");
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setSession(session);
@@ -129,7 +129,7 @@ public class CustomAuditEventRepositoryIT {
     }
 
     @Test
-    public void testAddEventWithNullData() {
+    void testAddEventWithNullData() {
         Map<String, Object> data = new HashMap<>();
         data.put("test-key", null);
         AuditEvent event = new AuditEvent("test-user", "test-type", data);
@@ -141,7 +141,7 @@ public class CustomAuditEventRepositoryIT {
     }
 
     @Test
-    public void addAuditEventWithAnonymousUser() {
+    void addAuditEventWithAnonymousUser() {
         Map<String, Object> data = new HashMap<>();
         data.put("test-key", "test-value");
         AuditEvent event = new AuditEvent(Constants.ANONYMOUS_USER, "test-type", data);
@@ -151,7 +151,7 @@ public class CustomAuditEventRepositoryIT {
     }
 
     @Test
-    public void addAuditEventWithAuthorizationFailureType() {
+    void addAuditEventWithAuthorizationFailureType() {
         Map<String, Object> data = new HashMap<>();
         data.put("test-key", "test-value");
         AuditEvent event = new AuditEvent("test-user", "AUTHORIZATION_FAILURE", data);

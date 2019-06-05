@@ -51,7 +51,7 @@ public class ExceptionTranslatorTestController {
         throw new RuntimeException();
     }
 
-    public static class TestDTO {
+    static class TestDTO {
 
         @NotNull
         private String test;
@@ -67,7 +67,7 @@ public class ExceptionTranslatorTestController {
 
     @ResponseStatus(value = HttpStatus.BAD_REQUEST, reason = "test response status")
     @SuppressWarnings("serial")
-    public static class TestResponseStatusException extends RuntimeException {
+    static class TestResponseStatusException extends RuntimeException {
     }
 
 }

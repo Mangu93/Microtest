@@ -48,7 +48,7 @@ public class UserJWTControllerIT {
     private MockMvc mockMvc;
 
     @BeforeEach
-    public void setup() {
+    void setup() {
         UserJWTController userJWTController = new UserJWTController(tokenProvider, authenticationManager);
         this.mockMvc = MockMvcBuilders.standaloneSetup(userJWTController)
             .setControllerAdvice(exceptionTranslator)
@@ -57,7 +57,7 @@ public class UserJWTControllerIT {
 
     @Test
     @Transactional
-    public void testAuthorize() throws Exception {
+    void testAuthorize() throws Exception {
         User user = new User();
         user.setLogin("user-jwt-controller");
         user.setEmail("user-jwt-controller@example.com");
@@ -81,7 +81,7 @@ public class UserJWTControllerIT {
 
     @Test
     @Transactional
-    public void testAuthorizeWithRememberMe() throws Exception {
+    void testAuthorizeWithRememberMe() throws Exception {
         User user = new User();
         user.setLogin("user-jwt-controller-remember-me");
         user.setEmail("user-jwt-controller-remember-me@example.com");
@@ -105,7 +105,7 @@ public class UserJWTControllerIT {
     }
 
     @Test
-    public void testAuthorizeFails() throws Exception {
+    void testAuthorizeFails() throws Exception {
         LoginVM login = new LoginVM();
         login.setUsername("wrong-user");
         login.setPassword("wrong password");

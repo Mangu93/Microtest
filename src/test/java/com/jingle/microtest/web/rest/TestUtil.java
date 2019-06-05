@@ -73,7 +73,7 @@ public final class TestUtil {
 
         private final ZonedDateTime date;
 
-        public ZonedDateTimeMatcher(ZonedDateTime date) {
+        ZonedDateTimeMatcher(ZonedDateTime date) {
             this.date = date;
         }
 

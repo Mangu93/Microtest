@@ -94,7 +94,7 @@ public class ContentsIT {
     private User user;
 
     @BeforeEach
-    public void setup() {
+    void setup() {
         MockitoAnnotations.initMocks(this);
         final ContentResource contentResource = new ContentResource(contentResourceService, userRepository);
         this.restContentMockMvc = MockMvcBuilders.standaloneSetup(contentResource)
@@ -126,14 +126,13 @@ public class ContentsIT {
      * This is a static method, as tests for other entities might also need it,
      * if they test an entity which requires the current entity.
      */
-    public Contents createEntity(EntityManager em) {
-        Contents contents = new Contents()
+    Contents createEntity(EntityManager em) {
+        return new Contents()
             .value(DEFAULT_VALUE)
             .createdAt(DEFAULT_CREATED_AT).userBelongsTo(this.user);
-        return contents;
     }
 
-    public User createUserEntity(EntityManager em) {
+    User createUserEntity(EntityManager em) {
         return this.userRepository.findOneByLogin("admin").get();
     }
 
@@ -143,15 +142,14 @@ public class ContentsIT {
      * This is a static method, as tests for other entities might also need it,
      * if they test an entity which requires the current entity.
      */
-    public static Contents createUpdatedEntity(EntityManager em) {
-        Contents contents = new Contents()
+    static Contents createUpdatedEntity(EntityManager em) {
+        return new Contents()
             .value(UPDATED_VALUE)
             .createdAt(UPDATED_CREATED_AT);
-        return contents;
     }
 
     @BeforeEach
-    public void initTest() {
+    void initTest() {
         user = createUserEntity(em);
         try {
             prepareUser();
@@ -163,7 +161,7 @@ public class ContentsIT {
 
     @Test
     @Transactional
-    public void createContent() throws Exception {
+    void createContent() throws Exception {
         int databaseSizeBeforeCreate = contentResourceRepository.findAll().size();
 
         // Create the Contents
@@ -188,7 +186,7 @@ public class ContentsIT {
 
     @Test
     @Transactional
-    public void createContentResourceWithExistingId() throws Exception {
+    void createContentResourceWithExistingId() throws Exception {
         int databaseSizeBeforeCreate = contentResourceRepository.findAll().size();
 
         // Create the Contents with an existing ID
@@ -208,7 +206,7 @@ public class ContentsIT {
 
     @Test
     @Transactional
-    public void checkValueIsRequired() throws Exception {
+    void checkValueIsRequired() throws Exception {
         int databaseSizeBeforeTest = contentResourceRepository.findAll().size();
         // set the field null
         contents.setValue(null);
@@ -226,7 +224,7 @@ public class ContentsIT {
 
     @Test
     @Transactional
-    public void checkCreatedAtIsRequired() throws Exception {
+    void checkCreatedAtIsRequired() throws Exception {
         int databaseSizeBeforeTest = contentResourceRepository.findAll().size();
         // set the field null
         contents.setCreatedAt(null);
@@ -244,7 +242,7 @@ public class ContentsIT {
 
     @Test
     @Transactional
-    public void getAllContents() throws Exception {
+    void getAllContents() throws Exception {
         contentResourceRepository.saveAndFlush(contents);
         // Get all the content
         restContentMockMvc.perform(get("/api/contents").header("Authorization", "Bearer " + accessToken)
@@ -257,13 +255,13 @@ public class ContentsIT {
             .andExpect(status().isOk())
             .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
             .andExpect(jsonPath("$.[*].id").value(hasItem(contents.getId().intValue())))
-            .andExpect(jsonPath("$.[*].value").value(hasItem(DEFAULT_VALUE.toString())))
+            .andExpect(jsonPath("$.[*].value").value(hasItem(DEFAULT_VALUE)))
             .andExpect(jsonPath("$.[*].createdAt").value(hasItem(sameInstant(DEFAULT_CREATED_AT))));
     }
 
     @Test
     @Transactional
-    public void getContent() throws Exception {
+    void getContent() throws Exception {
         // Initialize the database
         contentResourceRepository.saveAndFlush(contents);
 
@@ -278,13 +276,13 @@ public class ContentsIT {
             .andExpect(status().isOk())
             .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
             .andExpect(jsonPath("$.id").value(contents.getId().intValue()))
-            .andExpect(jsonPath("$.value").value(DEFAULT_VALUE.toString()))
+            .andExpect(jsonPath("$.value").value(DEFAULT_VALUE))
             .andExpect(jsonPath("$.createdAt").value(sameInstant(DEFAULT_CREATED_AT)));
     }
 
     @Test
     @Transactional
-    public void getNonExistingContent() throws Exception {
+    void getNonExistingContent() throws Exception {
         // Get the contents
         restContentMockMvc.perform(get("/api/contents/{id}", Long.MAX_VALUE).header("Authorization", "Bearer " + accessToken)
             .with(
@@ -298,7 +296,7 @@ public class ContentsIT {
 
     @Test
     @Transactional
-    public void updateContent() throws Exception {
+    void updateContent() throws Exception {
         // Initialize the database
         contentResourceService.save(contents);
 
@@ -334,7 +332,7 @@ public class ContentsIT {
 
     @Test
     @Transactional
-    public void updateNonExistingContent() throws Exception {
+    void updateNonExistingContent() throws Exception {
         int databaseSizeBeforeUpdate = contentResourceRepository.findAll().size();
 
         // Create the Contents
@@ -352,7 +350,7 @@ public class ContentsIT {
 
     @Test
     @Transactional
-    public void deleteContent() throws Exception {
+    void deleteContent() throws Exception {
         // Initialize the database
         contentResourceService.save(contents);
 
@@ -376,7 +374,7 @@ public class ContentsIT {
 
     @Test
     @Transactional
-    public void equalsVerifier() throws Exception {
+    void equalsVerifier() throws Exception {
         TestUtil.equalsVerifier(Contents.class);
         Contents contents1 = new Contents();
         contents1.setId(1L);

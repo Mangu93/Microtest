@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Unit tests for the {@link WebConfigurer} class.
  */
-public class WebConfigurerTest {
+class WebConfigurerTest {
 
     private WebConfigurer webConfigurer;
 
@@ -40,7 +40,7 @@ public class WebConfigurerTest {
     private JHipsterProperties props;
 
     @BeforeEach
-    public void setup() {
+    void setup() {
         servletContext = spy(new MockServletContext());
         doReturn(mock(FilterRegistration.Dynamic.class))
             .when(servletContext).addFilter(anyString(), any(Filter.class));
@@ -54,7 +54,7 @@ public class WebConfigurerTest {
     }
 
     @Test
-    public void testStartUpProdServletContext() throws ServletException {
+    void testStartUpProdServletContext() throws ServletException {
         env.setActiveProfiles(JHipsterConstants.SPRING_PROFILE_PRODUCTION);
         webConfigurer.onStartup(servletContext);
 
@@ -62,7 +62,7 @@ public class WebConfigurerTest {
     }
 
     @Test
-    public void testStartUpDevServletContext() throws ServletException {
+    void testStartUpDevServletContext() throws ServletException {
         env.setActiveProfiles(JHipsterConstants.SPRING_PROFILE_DEVELOPMENT);
         webConfigurer.onStartup(servletContext);
 
@@ -70,7 +70,7 @@ public class WebConfigurerTest {
     }
 
     @Test
-    public void testCustomizeServletContainer() {
+    void testCustomizeServletContainer() {
         env.setActiveProfiles(JHipsterConstants.SPRING_PROFILE_PRODUCTION);
         UndertowServletWebServerFactory container = new UndertowServletWebServerFactory();
         webConfigurer.customize(container);
@@ -83,7 +83,7 @@ public class WebConfigurerTest {
     }
 
     @Test
-    public void testCorsFilterOnApiPath() throws Exception {
+    void testCorsFilterOnApiPath() throws Exception {
         props.getCors().setAllowedOrigins(Collections.singletonList("*"));
         props.getCors().setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE"));
         props.getCors().setAllowedHeaders(Collections.singletonList("*"));
@@ -113,7 +113,7 @@ public class WebConfigurerTest {
     }
 
     @Test
-    public void testCorsFilterOnOtherPath() throws Exception {
+    void testCorsFilterOnOtherPath() throws Exception {
         props.getCors().setAllowedOrigins(Collections.singletonList("*"));
         props.getCors().setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE"));
         props.getCors().setAllowedHeaders(Collections.singletonList("*"));
@@ -132,7 +132,7 @@ public class WebConfigurerTest {
     }
 
     @Test
-    public void testCorsFilterDeactivated() throws Exception {
+    void testCorsFilterDeactivated() throws Exception {
         props.getCors().setAllowedOrigins(null);
 
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new WebConfigurerTestController())
@@ -147,7 +147,7 @@ public class WebConfigurerTest {
     }
 
     @Test
-    public void testCorsFilterDeactivated2() throws Exception {
+    void testCorsFilterDeactivated2() throws Exception {
         props.getCors().setAllowedOrigins(new ArrayList<>());
 
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new WebConfigurerTestController())
