@@ -45,6 +45,11 @@ public class User extends AbstractAuditingEntity implements Serializable {
     @Column(name = "password_hash", length = 60, nullable = false)
     private String password;
 
+    @NotNull
+    @Column(name = "is_service", nullable = false)
+    @JsonIgnore
+    private Boolean isService = false;
+
     @Size(max = 50)
     @Column(name = "first_name", length = 50)
     private String firstName;
@@ -200,6 +205,15 @@ public class User extends AbstractAuditingEntity implements Serializable {
 
     public void setAuthorities(Set<Authority> authorities) {
         this.authorities = authorities;
+    }
+
+
+    public Boolean getService() {
+        return isService;
+    }
+
+    public void setService(Boolean service) {
+        isService = service;
     }
 
     public Set<Contents> getContents() {

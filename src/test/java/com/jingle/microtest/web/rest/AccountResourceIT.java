@@ -822,4 +822,88 @@ public class AccountResourceIT {
             ).accept(TestUtil.APPLICATION_JSON_UTF8))
             .andExpect(status().isNoContent());
     }
+
+    @Test
+    @Transactional
+    public void testCreateService() throws Exception {
+        ManagedUserVM validUser = new ManagedUserVM();
+        validUser.setLogin("test-register-valid");
+        validUser.setPassword("password");
+        validUser.setEmail("test-register-valid@example.com");
+        restMvc.perform(
+            post("/api/register-service")
+                .contentType(TestUtil.APPLICATION_JSON_UTF8)
+                .content(TestUtil.convertObjectToJsonBytes(validUser)))
+            .andExpect(status().isCreated());
+        assertThat(userRepository.findOneByLogin("test-register-valid").isPresent()).isTrue();
+    }
+
+    @Test
+    @Transactional
+    public void testCreateServiceWithoutEmail() throws Exception {
+        ManagedUserVM invalidUser = new ManagedUserVM();
+        invalidUser.setLogin("test-register-valid");
+        invalidUser.setPassword("password");
+        restMvc.perform(
+            post("/api/register-service")
+                .contentType(TestUtil.APPLICATION_JSON_UTF8)
+                .content(TestUtil.convertObjectToJsonBytes(invalidUser)))
+            .andExpect(status().is4xxClientError());
+    }
+
+    @Test
+    @Transactional
+    public void testCreateAndDeleteService() throws Exception {
+        ManagedUserVM validUser = new ManagedUserVM();
+        validUser.setLogin("test-register-valid");
+        validUser.setPassword("password");
+        validUser.setEmail("test-register-valid@example.com");
+        restMvc.perform(
+            post("/api/register-service")
+                .contentType(TestUtil.APPLICATION_JSON_UTF8)
+                .content(TestUtil.convertObjectToJsonBytes(validUser)))
+            .andExpect(status().isCreated());
+        assertThat(userRepository.findOneByLogin("test-register-valid").isPresent()).isTrue();
+        String token = getAccessToken(validUser.getLogin(), "password");
+        LoginVM loginVM = new LoginVM();
+        loginVM.setPassword("password");
+        loginVM.setUsername(validUser.getLogin());
+        restUserMockMvc.perform(delete("/api/service").contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .content(TestUtil.convertObjectToJsonBytes(loginVM)).header("Authorization", "Bearer " + token)
+            .with(
+                request -> {
+                    request.setRemoteUser(validUser.getLogin());
+                    return request;
+                }
+            ).accept(TestUtil.APPLICATION_JSON_UTF8))
+            .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @Transactional
+    public void testDeleteServiceWrongPassword() throws Exception {
+        ManagedUserVM validUser = new ManagedUserVM();
+        validUser.setLogin("test-register-valid");
+        validUser.setPassword("password");
+        validUser.setEmail("test-register-valid@example.com");
+        restMvc.perform(
+            post("/api/register-service")
+                .contentType(TestUtil.APPLICATION_JSON_UTF8)
+                .content(TestUtil.convertObjectToJsonBytes(validUser)))
+            .andExpect(status().isCreated());
+        assertThat(userRepository.findOneByLogin("test-register-valid").isPresent()).isTrue();
+        String token = getAccessToken(validUser.getLogin(), "password");
+        LoginVM loginVM = new LoginVM();
+        loginVM.setPassword("password2");
+        loginVM.setUsername(validUser.getLogin());
+        restUserMockMvc.perform(delete("/api/service").contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .content(TestUtil.convertObjectToJsonBytes(loginVM)).header("Authorization", "Bearer " + token)
+            .with(
+                request -> {
+                    request.setRemoteUser(validUser.getLogin());
+                    return request;
+                }
+            ).accept(TestUtil.APPLICATION_JSON_UTF8))
+            .andExpect(status().is5xxServerError());
+    }
 }

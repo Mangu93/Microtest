@@ -9,8 +9,9 @@ import com.jingle.microtest.security.AuthoritiesConstants;
 import com.jingle.microtest.security.SecurityUtils;
 import com.jingle.microtest.service.dto.UserDTO;
 import com.jingle.microtest.service.util.RandomUtil;
-import com.jingle.microtest.web.rest.errors.*;
-
+import com.jingle.microtest.web.rest.errors.EmailAlreadyUsedException;
+import com.jingle.microtest.web.rest.errors.InvalidPasswordException;
+import com.jingle.microtest.web.rest.errors.LoginAlreadyUsedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.CacheManager;
@@ -100,6 +101,9 @@ public class UserService {
                 throw new EmailAlreadyUsedException();
             }
         });
+        if (userDTO.getEmail() == null) {
+            return null;
+        }
         User newUser = new User();
         String encryptedPassword = passwordEncoder.encode(password);
         newUser.setLogin(userDTO.getLogin().toLowerCase());
@@ -124,9 +128,20 @@ public class UserService {
         return newUser;
     }
 
-    private boolean removeNonActivatedUser(User existingUser){
+    public User registerService(UserDTO userDTO, String password) {
+        User registeredUser = this.registerUser(userDTO, password);
+        if (registeredUser == null) {
+            return null;
+        }
+        registeredUser.setService(true);
+        userRepository.save(registeredUser);
+        this.clearUserCaches(registeredUser);
+        return registeredUser;
+    }
+
+    private boolean removeNonActivatedUser(User existingUser) {
         if (existingUser.getActivated()) {
-             return false;
+            return false;
         }
         userRepository.delete(existingUser);
         userRepository.flush();
@@ -283,6 +298,7 @@ public class UserService {
 
     /**
      * Gets a list of all the authorities.
+     *
      * @return a list of all the authorities.
      */
     public List<String> getAuthorities() {

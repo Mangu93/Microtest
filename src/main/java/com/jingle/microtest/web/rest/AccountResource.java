@@ -73,6 +73,7 @@ public class AccountResource {
      * @throws InvalidPasswordException  {@code 400 (Bad Request)} if the password is incorrect.
      * @throws EmailAlreadyUsedException {@code 400 (Bad Request)} if the email is already used.
      * @throws LoginAlreadyUsedException {@code 400 (Bad Request)} if the login is already used.
+     * @throws EmailNotFoundException    {@code 400 (Bad Request)} if the email is not present.
      */
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
@@ -81,6 +82,31 @@ public class AccountResource {
             throw new InvalidPasswordException();
         }
         User user = userService.registerUser(managedUserVM, managedUserVM.getPassword());
+        if (user == null) {
+            throw new EmailNotFoundException();
+        }
+        mailService.sendActivationEmail(user);
+    }
+
+    /**
+     * {@code POST  /register} : register the service.
+     *
+     * @param managedUserVM the managed user View Model.
+     * @throws InvalidPasswordException  {@code 400 (Bad Request)} if the password is incorrect.
+     * @throws EmailAlreadyUsedException {@code 400 (Bad Request)} if the email is already used.
+     * @throws LoginAlreadyUsedException {@code 400 (Bad Request)} if the login is already used.
+     * @throws EmailNotFoundException    {@code 400 (Bad Request)} if the email is not present.
+     */
+    @PostMapping("/register-service")
+    @ResponseStatus(HttpStatus.CREATED)
+    public void registerService(@Valid @RequestBody ManagedUserVM managedUserVM) {
+        if (!checkPasswordLength(managedUserVM.getPassword())) {
+            throw new InvalidPasswordException();
+        }
+        User user = userService.registerService(managedUserVM, managedUserVM.getPassword());
+        if (user == null) {
+            throw new EmailNotFoundException();
+        }
         mailService.sendActivationEmail(user);
     }
 
@@ -109,6 +135,13 @@ public class AccountResource {
             .orElseThrow(() -> new AccountResourceException("User could not be found"));
     }
 
+    /**
+     * {@code DELETE /account}: delete the account
+     *
+     * @param request {@link HttpServletRequest}
+     * @param loginVM Logged-in user
+     * @return 201 code for success
+     */
     @DeleteMapping("/account")
     public ResponseEntity<Void> deleteAccount(HttpServletRequest request, @Valid @RequestBody LoginVM loginVM) {
         if (request.getRemoteUser().equalsIgnoreCase(loginVM.getUsername())) {
@@ -129,6 +162,32 @@ public class AccountResource {
     }
 
     /**
+     * {@code DELETE /service}: delete the service
+     *
+     * @param request {@link HttpServletRequest}
+     * @param loginVM Logged-in service
+     * @return 201 code for success
+     */
+    @DeleteMapping("/service")
+    public ResponseEntity<Void> deleteService(HttpServletRequest request, @Valid @RequestBody LoginVM loginVM) {
+        if (request.getRemoteUser().equalsIgnoreCase(loginVM.getUsername())) {
+            try {
+                UsernamePasswordAuthenticationToken authenticationToken =
+                    new UsernamePasswordAuthenticationToken(loginVM.getUsername(), loginVM.getPassword());
+
+                Authentication authentication = authenticationManagerBuilder.getObject().authenticate(authenticationToken);
+                if (authentication != null) {
+                    userService.deleteUser(loginVM.getUsername());
+                    return ResponseEntity.noContent().headers(HeaderUtil.createAlert(applicationName, "A service is deleted with identifier " + loginVM.getUsername(), loginVM.getUsername())).build();
+                }
+            } catch (AuthenticationException ex) {
+                throw new AccountResourceException("User and password do not match");
+            }
+        }
+        throw new AccountResourceException("Authentication needed to do this operation");
+    }
+
+    /**
      * {@code POST  /account} : update the current user information.
      *
      * @param userDTO the current user information.
@@ -137,17 +196,37 @@ public class AccountResource {
      */
     @PostMapping("/account")
     public void saveAccount(@Valid @RequestBody UserDTO userDTO) {
-        String userLogin = SecurityUtils.getCurrentUserLogin().orElseThrow(() -> new AccountResourceException("Current user login not found"));
-        Optional<User> existingUser = userRepository.findOneByEmailIgnoreCase(userDTO.getEmail());
-        if (existingUser.isPresent() && (!existingUser.get().getLogin().equalsIgnoreCase(userLogin))) {
-            throw new EmailAlreadyUsedException();
-        }
-        Optional<User> user = userRepository.findOneByLogin(userLogin);
+        Optional<User> user = getUser(userDTO.getEmail());
         if (!user.isPresent()) {
             throw new AccountResourceException("User could not be found");
         }
         userService.updateUser(userDTO.getFirstName(), userDTO.getLastName(), userDTO.getEmail(),
             userDTO.getLangKey(), userDTO.getImageUrl());
+    }
+    /**
+     * {@code POST  /service} : update the current service information.
+     *
+     * @param managedUserVM the current service information.
+     * @throws EmailAlreadyUsedException {@code 400 (Bad Request)} if the email is already used.
+     * @throws RuntimeException          {@code 500 (Internal Server Error)} if the service login wasn't found.
+     */
+    @PostMapping("/service")
+    public void saveService(@Valid @RequestBody ManagedUserVM managedUserVM) {
+        Optional<User> user = getUser(managedUserVM.getEmail());
+        if (!user.isPresent()) {
+            throw new AccountResourceException("Service could not be found");
+        }
+        userService.updateUser(managedUserVM.getFirstName(), managedUserVM.getLastName(), managedUserVM.getEmail(),
+            managedUserVM.getLangKey(), managedUserVM.getImageUrl());
+    }
+
+    private Optional<User> getUser(String email) {
+        String userLogin = SecurityUtils.getCurrentUserLogin().orElseThrow(() -> new AccountResourceException("Current user login not found"));
+        Optional<User> existingUser = userRepository.findOneByEmailIgnoreCase(email);
+        if (existingUser.isPresent() && (!existingUser.get().getLogin().equalsIgnoreCase(userLogin))) {
+            throw new EmailAlreadyUsedException();
+        }
+        return userRepository.findOneByLogin(userLogin);
     }
 
     /**
