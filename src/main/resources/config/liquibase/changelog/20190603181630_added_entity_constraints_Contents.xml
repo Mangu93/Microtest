@@ -4,13 +4,13 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.6.xsd">
     <!--
-        Added the constraints for entity UserResource.
+        Added the constraints for entity Contents.
     -->
     <changeSet id="20190603181630-2" author="jhipster">
         
         <addForeignKeyConstraint baseColumnNames="user_belongs_to_id"
-                                 baseTableName="user_resource"
-                                 constraintName="fk_user_resource_user_belongs_to_id"
+                                 baseTableName="contents"
+                                 constraintName="fk_contents_user_belongs_to_id"
                                  referencedColumnNames="id"
                                  referencedTableName="jhi_user"/>
 

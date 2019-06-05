@@ -1,12 +1,12 @@
 package com.jingle.microtest.web.rest;
 
 import com.jingle.microtest.MicrotestApp;
+import com.jingle.microtest.domain.Contents;
 import com.jingle.microtest.domain.User;
-import com.jingle.microtest.domain.UserResource;
 import com.jingle.microtest.repository.UserRepository;
-import com.jingle.microtest.repository.UserResourceRepository;
+import com.jingle.microtest.repository.ContentResourceRepository;
 import com.jingle.microtest.security.jwt.TokenProvider;
-import com.jingle.microtest.service.UserResourceService;
+import com.jingle.microtest.service.ContentResourceService;
 import com.jingle.microtest.web.rest.errors.ExceptionTranslator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,10 +39,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * Integration tests for the {@Link UserResourceResource} REST controller.
+ * Integration tests for the {@link ContentResource} REST controller.
  */
 @SpringBootTest(classes = MicrotestApp.class)
-public class UserResourceResourceIT {
+public class ContentsIT {
 
     private static final String DEFAULT_VALUE = "AAAAAAAAAA";
     private static final String UPDATED_VALUE = "BBBBBBBBBB";
@@ -51,10 +51,10 @@ public class UserResourceResourceIT {
     private static final ZonedDateTime UPDATED_CREATED_AT = ZonedDateTime.now(ZoneId.systemDefault()).withNano(0);
 
     @Autowired
-    private UserResourceRepository userResourceRepository;
+    private ContentResourceRepository contentResourceRepository;
 
     @Autowired
-    private UserResourceService userResourceService;
+    private ContentResourceService contentResourceService;
 
     @Autowired
     private UserRepository userRepository;
@@ -83,11 +83,11 @@ public class UserResourceResourceIT {
     @Autowired
     private AuthenticationManagerBuilder authenticationManager;
 
-    private MockMvc restUserResourceMockMvc;
+    private MockMvc restContentMockMvc;
 
     private MockMvc mockMvc;
 
-    private UserResource userResource;
+    private Contents contents;
 
     private String accessToken;
 
@@ -96,8 +96,8 @@ public class UserResourceResourceIT {
     @BeforeEach
     public void setup() {
         MockitoAnnotations.initMocks(this);
-        final UserResourceResource userResourceResource = new UserResourceResource(userResourceService, userRepository);
-        this.restUserResourceMockMvc = MockMvcBuilders.standaloneSetup(userResourceResource)
+        final ContentResource contentResource = new ContentResource(contentResourceService, userRepository);
+        this.restContentMockMvc = MockMvcBuilders.standaloneSetup(contentResource)
             .setCustomArgumentResolvers(pageableArgumentResolver)
             .setControllerAdvice(exceptionTranslator)
             .setConversionService(createFormattingConversionService())
@@ -126,11 +126,11 @@ public class UserResourceResourceIT {
      * This is a static method, as tests for other entities might also need it,
      * if they test an entity which requires the current entity.
      */
-    public UserResource createEntity(EntityManager em) {
-        UserResource userResource = new UserResource()
+    public Contents createEntity(EntityManager em) {
+        Contents contents = new Contents()
             .value(DEFAULT_VALUE)
             .createdAt(DEFAULT_CREATED_AT).userBelongsTo(this.user);
-        return userResource;
+        return contents;
     }
 
     public User createUserEntity(EntityManager em) {
@@ -143,11 +143,11 @@ public class UserResourceResourceIT {
      * This is a static method, as tests for other entities might also need it,
      * if they test an entity which requires the current entity.
      */
-    public static UserResource createUpdatedEntity(EntityManager em) {
-        UserResource userResource = new UserResource()
+    public static Contents createUpdatedEntity(EntityManager em) {
+        Contents contents = new Contents()
             .value(UPDATED_VALUE)
             .createdAt(UPDATED_CREATED_AT);
-        return userResource;
+        return contents;
     }
 
     @BeforeEach
@@ -158,16 +158,16 @@ public class UserResourceResourceIT {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        userResource = createEntity(em);
+        contents = createEntity(em);
     }
 
     @Test
     @Transactional
-    public void createUserResource() throws Exception {
-        int databaseSizeBeforeCreate = userResourceRepository.findAll().size();
+    public void createContent() throws Exception {
+        int databaseSizeBeforeCreate = contentResourceRepository.findAll().size();
 
-        // Create the UserResource
-        restUserResourceMockMvc.perform(post("/api/user-resources").header("Authorization", "Bearer " + accessToken)
+        // Create the Contents
+        restContentMockMvc.perform(post("/api/contents").header("Authorization", "Bearer " + accessToken)
             .with(
                 request -> {
                     request.setRemoteUser(this.user.getLogin());
@@ -175,79 +175,79 @@ public class UserResourceResourceIT {
                 }
             )
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
-            .content(TestUtil.convertObjectToJsonBytes(userResource)))
+            .content(TestUtil.convertObjectToJsonBytes(contents)))
             .andExpect(status().isCreated());
 
-        // Validate the UserResource in the database
-        List<UserResource> userResourceList = userResourceRepository.findAll();
-        assertThat(userResourceList).hasSize(databaseSizeBeforeCreate + 1);
-        UserResource testUserResource = userResourceList.get(userResourceList.size() - 1);
-        assertThat(testUserResource.getValue()).isEqualTo(DEFAULT_VALUE);
-        assertThat(testUserResource.getCreatedAt()).isEqualTo(DEFAULT_CREATED_AT);
+        // Validate the Contents in the database
+        List<Contents> contentsList = contentResourceRepository.findAll();
+        assertThat(contentsList).hasSize(databaseSizeBeforeCreate + 1);
+        Contents testContents = contentsList.get(contentsList.size() - 1);
+        assertThat(testContents.getValue()).isEqualTo(DEFAULT_VALUE);
+        assertThat(testContents.getCreatedAt()).isEqualTo(DEFAULT_CREATED_AT);
     }
 
     @Test
     @Transactional
-    public void createUserResourceWithExistingId() throws Exception {
-        int databaseSizeBeforeCreate = userResourceRepository.findAll().size();
+    public void createContentResourceWithExistingId() throws Exception {
+        int databaseSizeBeforeCreate = contentResourceRepository.findAll().size();
 
-        // Create the UserResource with an existing ID
-        userResource.setId(1L);
+        // Create the Contents with an existing ID
+        contents.setId(1L);
 
         // An entity with an existing ID cannot be created, so this API call must fail
-        restUserResourceMockMvc.perform(post("/api/user-resources")
+        restContentMockMvc.perform(post("/api/contents")
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
-            .content(TestUtil.convertObjectToJsonBytes(userResource)))
+            .content(TestUtil.convertObjectToJsonBytes(contents)))
             .andExpect(status().isBadRequest());
 
-        // Validate the UserResource in the database
-        List<UserResource> userResourceList = userResourceRepository.findAll();
-        assertThat(userResourceList).hasSize(databaseSizeBeforeCreate);
+        // Validate the Contents in the database
+        List<Contents> contentsList = contentResourceRepository.findAll();
+        assertThat(contentsList).hasSize(databaseSizeBeforeCreate);
     }
 
 
     @Test
     @Transactional
     public void checkValueIsRequired() throws Exception {
-        int databaseSizeBeforeTest = userResourceRepository.findAll().size();
+        int databaseSizeBeforeTest = contentResourceRepository.findAll().size();
         // set the field null
-        userResource.setValue(null);
+        contents.setValue(null);
 
-        // Create the UserResource, which fails.
+        // Create the Contents, which fails.
 
-        restUserResourceMockMvc.perform(post("/api/user-resources")
+        restContentMockMvc.perform(post("/api/contents")
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
-            .content(TestUtil.convertObjectToJsonBytes(userResource)))
+            .content(TestUtil.convertObjectToJsonBytes(contents)))
             .andExpect(status().isBadRequest());
 
-        List<UserResource> userResourceList = userResourceRepository.findAll();
-        assertThat(userResourceList).hasSize(databaseSizeBeforeTest);
+        List<Contents> contentsList = contentResourceRepository.findAll();
+        assertThat(contentsList).hasSize(databaseSizeBeforeTest);
     }
 
     @Test
     @Transactional
     public void checkCreatedAtIsRequired() throws Exception {
-        int databaseSizeBeforeTest = userResourceRepository.findAll().size();
+        int databaseSizeBeforeTest = contentResourceRepository.findAll().size();
         // set the field null
-        userResource.setCreatedAt(null);
+        contents.setCreatedAt(null);
 
-        // Create the UserResource, which fails.
+        // Create the Contents, which fails.
 
-        restUserResourceMockMvc.perform(post("/api/user-resources")
+        restContentMockMvc.perform(post("/api/contents")
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
-            .content(TestUtil.convertObjectToJsonBytes(userResource)))
+            .content(TestUtil.convertObjectToJsonBytes(contents)))
             .andExpect(status().isBadRequest());
 
-        List<UserResource> userResourceList = userResourceRepository.findAll();
-        assertThat(userResourceList).hasSize(databaseSizeBeforeTest);
+        List<Contents> contentsList = contentResourceRepository.findAll();
+        assertThat(contentsList).hasSize(databaseSizeBeforeTest);
     }
 
     @Test
     @Transactional
-    public void getAllUserResources() throws Exception {
-        userResourceRepository.saveAndFlush(userResource);
-        // Get all the userResourceList
-        restUserResourceMockMvc.perform(get("/api/user-resources").header("Authorization", "Bearer " + accessToken)
+    public void getAllContents() throws Exception {
+        contentResourceRepository.saveAndFlush(contents);
+        // Get all the content
+        restContentMockMvc.perform(get("/api/contents").header("Authorization", "Bearer " + accessToken)
             .with(
                 request -> {
                     request.setRemoteUser(this.user.getLogin());
@@ -256,19 +256,19 @@ public class UserResourceResourceIT {
             ))
             .andExpect(status().isOk())
             .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-            .andExpect(jsonPath("$.[*].id").value(hasItem(userResource.getId().intValue())))
+            .andExpect(jsonPath("$.[*].id").value(hasItem(contents.getId().intValue())))
             .andExpect(jsonPath("$.[*].value").value(hasItem(DEFAULT_VALUE.toString())))
             .andExpect(jsonPath("$.[*].createdAt").value(hasItem(sameInstant(DEFAULT_CREATED_AT))));
     }
 
     @Test
     @Transactional
-    public void getUserResource() throws Exception {
+    public void getContent() throws Exception {
         // Initialize the database
-        userResourceRepository.saveAndFlush(userResource);
+        contentResourceRepository.saveAndFlush(contents);
 
-        // Get the userResource
-        restUserResourceMockMvc.perform(get("/api/user-resources/{id}", userResource.getId()).header("Authorization", "Bearer " + accessToken)
+        // Get the contents
+        restContentMockMvc.perform(get("/api/contents/{id}", contents.getId()).header("Authorization", "Bearer " + accessToken)
             .with(
                 request -> {
                     request.setRemoteUser(this.user.getLogin());
@@ -277,16 +277,16 @@ public class UserResourceResourceIT {
             ))
             .andExpect(status().isOk())
             .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-            .andExpect(jsonPath("$.id").value(userResource.getId().intValue()))
+            .andExpect(jsonPath("$.id").value(contents.getId().intValue()))
             .andExpect(jsonPath("$.value").value(DEFAULT_VALUE.toString()))
             .andExpect(jsonPath("$.createdAt").value(sameInstant(DEFAULT_CREATED_AT)));
     }
 
     @Test
     @Transactional
-    public void getNonExistingUserResource() throws Exception {
-        // Get the userResource
-        restUserResourceMockMvc.perform(get("/api/user-resources/{id}", Long.MAX_VALUE).header("Authorization", "Bearer " + accessToken)
+    public void getNonExistingContent() throws Exception {
+        // Get the contents
+        restContentMockMvc.perform(get("/api/contents/{id}", Long.MAX_VALUE).header("Authorization", "Bearer " + accessToken)
             .with(
                 request -> {
                     request.setRemoteUser(this.user.getLogin());
@@ -298,22 +298,22 @@ public class UserResourceResourceIT {
 
     @Test
     @Transactional
-    public void updateUserResource() throws Exception {
+    public void updateContent() throws Exception {
         // Initialize the database
-        userResourceService.save(userResource);
+        contentResourceService.save(contents);
 
-        int databaseSizeBeforeUpdate = userResourceRepository.findAll().size();
+        int databaseSizeBeforeUpdate = contentResourceRepository.findAll().size();
 
-        // Update the userResource
-        UserResource updatedUserResource = userResourceRepository.findById(userResource.getId()).get();
-        // Disconnect from session so that the updates on updatedUserResource are not directly saved in db
-        em.detach(updatedUserResource);
-        updatedUserResource
+        // Update the contents
+        Contents updatedContents = contentResourceRepository.findById(contents.getId()).get();
+        // Disconnect from session so that the updates on updatedContents are not directly saved in db
+        em.detach(updatedContents);
+        updatedContents
             .value(UPDATED_VALUE)
             .createdAt(UPDATED_CREATED_AT)
             .setUserBelongsTo(this.user);
 
-        restUserResourceMockMvc.perform(put("/api/user-resources").header("Authorization", "Bearer " + accessToken)
+        restContentMockMvc.perform(put("/api/contents").header("Authorization", "Bearer " + accessToken)
             .with(
                 request -> {
                     request.setRemoteUser(this.user.getLogin());
@@ -321,45 +321,45 @@ public class UserResourceResourceIT {
                 }
             )
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
-            .content(TestUtil.convertObjectToJsonBytes(updatedUserResource)))
+            .content(TestUtil.convertObjectToJsonBytes(updatedContents)))
             .andExpect(status().isOk());
 
-        // Validate the UserResource in the database
-        List<UserResource> userResourceList = userResourceRepository.findAll();
-        assertThat(userResourceList).hasSize(databaseSizeBeforeUpdate);
-        UserResource testUserResource = userResourceList.get(userResourceList.size() - 1);
-        assertThat(testUserResource.getValue()).isEqualTo(UPDATED_VALUE);
-        assertThat(testUserResource.getCreatedAt()).isEqualTo(UPDATED_CREATED_AT);
+        // Validate the Contents in the database
+        List<Contents> contentsList = contentResourceRepository.findAll();
+        assertThat(contentsList).hasSize(databaseSizeBeforeUpdate);
+        Contents testContents = contentsList.get(contentsList.size() - 1);
+        assertThat(testContents.getValue()).isEqualTo(UPDATED_VALUE);
+        assertThat(testContents.getCreatedAt()).isEqualTo(UPDATED_CREATED_AT);
     }
 
     @Test
     @Transactional
-    public void updateNonExistingUserResource() throws Exception {
-        int databaseSizeBeforeUpdate = userResourceRepository.findAll().size();
+    public void updateNonExistingContent() throws Exception {
+        int databaseSizeBeforeUpdate = contentResourceRepository.findAll().size();
 
-        // Create the UserResource
+        // Create the Contents
 
         // If the entity doesn't have an ID, it will throw BadRequestAlertException
-        restUserResourceMockMvc.perform(put("/api/user-resources")
+        restContentMockMvc.perform(put("/api/contents")
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
-            .content(TestUtil.convertObjectToJsonBytes(userResource)))
+            .content(TestUtil.convertObjectToJsonBytes(contents)))
             .andExpect(status().isBadRequest());
 
-        // Validate the UserResource in the database
-        List<UserResource> userResourceList = userResourceRepository.findAll();
-        assertThat(userResourceList).hasSize(databaseSizeBeforeUpdate);
+        // Validate the Contents in the database
+        List<Contents> contentsList = contentResourceRepository.findAll();
+        assertThat(contentsList).hasSize(databaseSizeBeforeUpdate);
     }
 
     @Test
     @Transactional
-    public void deleteUserResource() throws Exception {
+    public void deleteContent() throws Exception {
         // Initialize the database
-        userResourceService.save(userResource);
+        contentResourceService.save(contents);
 
-        int databaseSizeBeforeDelete = userResourceRepository.findAll().size();
+        int databaseSizeBeforeDelete = contentResourceRepository.findAll().size();
 
-        // Delete the userResource
-        restUserResourceMockMvc.perform(delete("/api/user-resources/{id}", userResource.getId()).header("Authorization", "Bearer " + accessToken)
+        // Delete the contents
+        restContentMockMvc.perform(delete("/api/contents/{id}", contents.getId()).header("Authorization", "Bearer " + accessToken)
             .with(
                 request -> {
                     request.setRemoteUser(this.user.getLogin());
@@ -370,22 +370,22 @@ public class UserResourceResourceIT {
             .andExpect(status().isNoContent());
 
         // Validate the database is empty
-        List<UserResource> userResourceList = userResourceRepository.findAll();
-        assertThat(userResourceList).hasSize(databaseSizeBeforeDelete - 1);
+        List<Contents> contentsList = contentResourceRepository.findAll();
+        assertThat(contentsList).hasSize(databaseSizeBeforeDelete - 1);
     }
 
     @Test
     @Transactional
     public void equalsVerifier() throws Exception {
-        TestUtil.equalsVerifier(UserResource.class);
-        UserResource userResource1 = new UserResource();
-        userResource1.setId(1L);
-        UserResource userResource2 = new UserResource();
-        userResource2.setId(userResource1.getId());
-        assertThat(userResource1).isEqualTo(userResource2);
-        userResource2.setId(2L);
-        assertThat(userResource1).isNotEqualTo(userResource2);
-        userResource1.setId(null);
-        assertThat(userResource1).isNotEqualTo(userResource2);
+        TestUtil.equalsVerifier(Contents.class);
+        Contents contents1 = new Contents();
+        contents1.setId(1L);
+        Contents contents2 = new Contents();
+        contents2.setId(contents1.getId());
+        assertThat(contents1).isEqualTo(contents2);
+        contents2.setId(2L);
+        assertThat(contents1).isNotEqualTo(contents2);
+        contents1.setId(null);
+        assertThat(contents1).isNotEqualTo(contents2);
     }
 }

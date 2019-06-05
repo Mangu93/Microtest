@@ -11,12 +11,12 @@ import java.io.Serializable;
 import java.time.ZonedDateTime;
 
 /**
- * A UserResource.
+ * A Contents.
  */
 @Entity
-@Table(name = "user_resource")
+@Table(name = "contents")
 @Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
-public class UserResource implements Serializable {
+public class Contents implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -34,7 +34,7 @@ public class UserResource implements Serializable {
     private ZonedDateTime createdAt;
 
     @ManyToOne(cascade = CascadeType.MERGE)
-    @JsonIgnoreProperties("userResources")
+    @JsonIgnoreProperties("contents")
     private User userBelongsTo;
 
     // jhipster-needle-entity-add-field - JHipster will add fields here, do not remove
@@ -50,7 +50,7 @@ public class UserResource implements Serializable {
         return value;
     }
 
-    public UserResource value(String value) {
+    public Contents value(String value) {
         this.value = value;
         return this;
     }
@@ -63,7 +63,7 @@ public class UserResource implements Serializable {
         return createdAt;
     }
 
-    public UserResource createdAt(ZonedDateTime createdAt) {
+    public Contents createdAt(ZonedDateTime createdAt) {
         this.createdAt = createdAt;
         return this;
     }
@@ -76,7 +76,7 @@ public class UserResource implements Serializable {
         return userBelongsTo;
     }
 
-    public UserResource userBelongsTo(User user) {
+    public Contents userBelongsTo(User user) {
         this.userBelongsTo = user;
         return this;
     }
@@ -91,10 +91,10 @@ public class UserResource implements Serializable {
         if (this == o) {
             return true;
         }
-        if (!(o instanceof UserResource)) {
+        if (!(o instanceof Contents)) {
             return false;
         }
-        return id != null && id.equals(((UserResource) o).id);
+        return id != null && id.equals(((Contents) o).id);
     }
 
     @Override
@@ -104,7 +104,7 @@ public class UserResource implements Serializable {
 
     @Override
     public String toString() {
-        return "UserResource{" +
+        return "Contents{" +
             "id=" + getId() +
             ", value='" + getValue() + "'" +
             ", createdAt='" + getCreatedAt() + "'" +

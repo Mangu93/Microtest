@@ -2,6 +2,7 @@ package com.jingle.microtest.config;
 
 import java.time.Duration;
 
+import com.jingle.microtest.domain.Contents;
 import org.ehcache.config.builders.*;
 import org.ehcache.jsr107.Eh107Configuration;
 
@@ -43,7 +44,7 @@ public class CacheConfiguration {
             createCache(cm, com.jingle.microtest.domain.User.class.getName());
             createCache(cm, com.jingle.microtest.domain.Authority.class.getName());
             createCache(cm, com.jingle.microtest.domain.User.class.getName() + ".authorities");
-            createCache(cm, com.jingle.microtest.domain.UserResource.class.getName());
+            createCache(cm, Contents.class.getName());
             // jhipster-needle-ehcache-add-entry
         };
     }

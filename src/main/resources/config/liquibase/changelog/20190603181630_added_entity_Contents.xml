@@ -8,10 +8,10 @@
 
 
     <!--
-        Added the entity UserResource.
+        Added the entity Contents.
     -->
     <changeSet id="20190603181630-1" author="jhipster">
-        <createTable tableName="user_resource">
+        <createTable tableName="contents">
             <column name="id" type="bigint" autoIncrement="${autoIncrement}">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
@@ -30,7 +30,7 @@
             <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here, do not remove-->
         </createTable>
 
-        <dropDefaultValue tableName="user_resource" columnName="created_at" columnDataType="datetime"/>
+        <dropDefaultValue tableName="contents" columnName="created_at" columnDataType="datetime"/>
     </changeSet>
 
     <!--
@@ -43,9 +43,9 @@
     -->
     <changeSet id="20190603181630-1-data" author="jhipster" context="faker">
         <loadData
-                  file="config/liquibase/data/user_resource.csv"
+                  file="config/liquibase/data/contents.csv"
                   separator=";"
-                  tableName="user_resource"
+                  tableName="contents"
                   context="dev">
             <column name="id" type="numeric"/>
             <column name="jhi_value" type="string"/>

@@ -95,7 +95,7 @@ public class User extends AbstractAuditingEntity implements Serializable {
 
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "userBelongsTo")
     @Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
-    private Set<UserResource> userResources = new HashSet<>();
+    private Set<Contents> contents = new HashSet<>();
 
     public Long getId() {
         return id;
@@ -202,6 +202,14 @@ public class User extends AbstractAuditingEntity implements Serializable {
         this.authorities = authorities;
     }
 
+    public Set<Contents> getContents() {
+        return contents;
+    }
+
+    public void setContents(Set<Contents> contents) {
+        this.contents = contents;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -231,4 +239,5 @@ public class User extends AbstractAuditingEntity implements Serializable {
             ", activationKey='" + activationKey + '\'' +
             "}";
     }
+
 }
