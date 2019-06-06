@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.cloudfoundry.com.fasterxml.jackson.annotation.JsonView;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.json.MappingJacksonValue;
 import org.springframework.web.bind.annotation.*;
@@ -79,22 +80,20 @@ public class ContentResource {
      * {@code PUT  /contents} : Updates an existing content.
      *
      * @param contents the content to update.
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the updated contents,
+     * @return the {@link ResponseEntity} with status {@code 201 (OK)}
      * or with status {@code 400 (Bad Request)} if the contents is not valid,
      * or with status {@code 500 (Internal Server Error)} if the contents couldn't be updated.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PutMapping("/contents")
-    public ResponseEntity<Contents> updateContent(@Valid @RequestBody Contents contents, HttpServletRequest request) throws URISyntaxException {
+    @ResponseStatus(HttpStatus.OK)
+    public void updateContent(@Valid @RequestBody Contents contents, HttpServletRequest request) throws URISyntaxException {
         log.debug("REST request to update Contents : {}", contents);
         if (contents.getId() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
         if (contents.getUserBelongsTo() != null && contents.getUserBelongsTo().getLogin().equalsIgnoreCase(request.getRemoteUser())) {
             Contents result = contentResourceService.save(contents);
-            return ResponseEntity.ok()
-                .headers(HeaderUtil.createEntityUpdateAlert(applicationName, false, ENTITY_NAME, contents.getId().toString()))
-                .body(result);
         } else {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
@@ -109,7 +108,10 @@ public class ContentResource {
     public List<Contents> getAllContents(HttpServletRequest request) {
         log.debug("REST request to get all contents");
         String username = request.getRemoteUser();
-        return contentResourceService.findAll().stream().filter(content -> content.getUserBelongsTo() != null).filter(content -> content.getUserBelongsTo().getLogin().equalsIgnoreCase(username)).collect(Collectors.toList());
+        List<Contents> contents =  contentResourceService.findAll().stream().filter(content -> content.getUserBelongsTo() != null).filter(content -> content.getUserBelongsTo().getLogin().equalsIgnoreCase(username)).collect(Collectors.toList());
+        //Hiding password
+        contents.forEach(content -> content.getUserBelongsTo().setPassword(""));
+        return contents;
     }
 
     /**
@@ -124,6 +126,8 @@ public class ContentResource {
         Optional<Contents> content = contentResourceService.findOne(id);
         String username = request.getRemoteUser();
         if (content.isPresent() && content.get().getUserBelongsTo().getLogin().equalsIgnoreCase(username)) {
+            //Hiding password
+            content.get().getUserBelongsTo().setPassword("");
             return ResponseEntity.ok().body(content.get());
         } else {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
