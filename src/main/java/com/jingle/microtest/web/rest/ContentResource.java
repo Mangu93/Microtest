@@ -92,8 +92,10 @@ public class ContentResource {
         if (contents.getId() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
-        if (contents.getUserBelongsTo() != null && contents.getUserBelongsTo().getLogin().equalsIgnoreCase(request.getRemoteUser())) {
-            Contents result = contentResourceService.save(contents);
+        Optional<Contents> realContent = contentResourceService.findOne(contents.getId());
+        if (realContent.isPresent() && realContent.get().getUserBelongsTo().getLogin().equalsIgnoreCase(request.getRemoteUser()))  {
+            contents.setUserBelongsTo(realContent.get().getUserBelongsTo());
+            contentResourceService.save(contents);
         } else {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
