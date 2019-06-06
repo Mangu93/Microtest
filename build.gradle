@@ -135,7 +135,7 @@ liquibase {
             driver "org.postgresql.Driver"
             url "jdbc:postgresql://localhost:5432/microtest"
             username "microtest"
-            password ""
+            password "_M1cr0test_"
             changeLogFile "src/main/resources/config/liquibase/master.xml"
             defaultSchemaName ""
             logLevel "debug"

@@ -1,11 +1,16 @@
 version: '2'
 services:
-  microtest-postgresql:
-    image: postgres:11.2
-    volumes:
-      - ~/volumes/jhipster/microtest/postgresql/:/var/lib/postgresql/data/
+  microtest-app:
+    image: microtest
     environment:
-      - POSTGRES_USER=microtest
-      - POSTGRES_PASSWORD=
+      - _JAVA_OPTIONS=-Xmx512m -Xms256m
+      - SPRING_PROFILES_ACTIVE=prod,swagger
+      - MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED=true
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://microtest-postgresql:5432/microtest
+      - JHIPSTER_SLEEP=10 # gives time for the database to boot before the application
     ports:
-      - 5432:5432
+      - 8080:8080
+  microtest-postgresql:
+    extends:
+      file: postgresql.yml
+      service: microtest-postgresql
