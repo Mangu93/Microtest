@@ -222,23 +222,6 @@ public class ContentsIT {
         assertThat(contentsList).hasSize(databaseSizeBeforeTest);
     }
 
-    @Test
-    @Transactional
-    void checkCreatedAtIsRequired() throws Exception {
-        int databaseSizeBeforeTest = contentResourceRepository.findAll().size();
-        // set the field null
-        contents.setCreatedAt(null);
-
-        // Create the Contents, which fails.
-
-        restContentMockMvc.perform(post("/api/contents")
-            .contentType(TestUtil.APPLICATION_JSON_UTF8)
-            .content(TestUtil.convertObjectToJsonBytes(contents)))
-            .andExpect(status().isBadRequest());
-
-        List<Contents> contentsList = contentResourceRepository.findAll();
-        assertThat(contentsList).hasSize(databaseSizeBeforeTest);
-    }
 
     @Test
     @Transactional

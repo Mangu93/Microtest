@@ -1,5 +1,8 @@
 package com.jingle.microtest.web.rest;
 
+import com.fasterxml.jackson.databind.ser.FilterProvider;
+import com.fasterxml.jackson.databind.ser.impl.SimpleBeanPropertyFilter;
+import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
 import com.jingle.microtest.domain.Contents;
 import com.jingle.microtest.domain.User;
 import com.jingle.microtest.repository.UserRepository;
@@ -9,7 +12,9 @@ import io.github.jhipster.web.util.HeaderUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.cloudfoundry.com.fasterxml.jackson.annotation.JsonView;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.json.MappingJacksonValue;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
@@ -61,6 +66,10 @@ public class ContentResource {
             optionalUser.ifPresent(contents::setUserBelongsTo);
         }
         Contents result = contentResourceService.save(contents);
+        //Hiding password in JSON response
+        User temporal = result.getUserBelongsTo();
+        temporal.setPassword("");
+        result.setUserBelongsTo(temporal);
         return ResponseEntity.created(new URI("/api/contents/" + result.getId()))
             .headers(HeaderUtil.createEntityCreationAlert(applicationName, false, ENTITY_NAME, result.getId().toString()))
             .body(result);
