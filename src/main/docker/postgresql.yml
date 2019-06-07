@@ -8,4 +8,4 @@ services:
       - POSTGRES_USER=microtest
       - POSTGRES_PASSWORD=_M1cr0test_
     ports:
-      - 5432:5432
+      - 5434:5432
